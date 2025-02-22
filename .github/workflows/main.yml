@@ -1,0 +1,42 @@
+name: Build WSL2 Kernel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential flex bison dwarves libssl-dev libelf-dev cpio qemu-utils
+
+      - name: Clone WSL2 Kernel source
+        run: |
+          git clone --depth=1 https://github.com/microsoft/WSL2-Linux-Kernel.git kernel
+
+      - name: Compile Kernel
+        run: |
+          cd kernel
+          make KCONFIG_CONFIG=../Microsoft/config-wsl -j$(nproc)
+
+      - name: Upload Kernel as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wsl2-kernel
+          path: kernel/arch/x86/boot/bzImage
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: kernel/arch/x86/boot/bzImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
